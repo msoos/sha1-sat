@@ -668,7 +668,7 @@ static void collision()
 
 int main(int argc, char *argv[])
 {
-	unsigned long seed = time(0);
+	unsigned long seed = 0;
 
 	/* Process command line */
 	{
@@ -717,6 +717,11 @@ int main(int argc, char *argv[])
 			.positional(p)
 			.run(), map);
 		notify(map);
+
+		if (!map.count("seed")) {
+			std::cout << "You MUST give a seed." << std::endl;
+			return -1;
+		}
 
 		if (map.count("help")) {
 			std::cout << all_options;
