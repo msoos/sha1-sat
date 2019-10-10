@@ -45,6 +45,7 @@ static unsigned int config_nr_rounds = 80;
 static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
 static bool all_zero_output = false;
+static int random_output = false;
 
 /* CNF options */
 static bool config_use_xor_clauses = false;
@@ -549,6 +550,10 @@ static void preimage()
 		for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
 			constant(f.h_out[i/32][i%32], 0);
 		}
+	} else if (random_output) {
+		for (unsigned int i = 0; i < config_nr_hash_bits; ++i) {
+			constant(f.h_out[i/32][i%32], rand()&1);
+		}
 	} else {
 		std::vector<unsigned int> hash_bits(160);
 		for (unsigned int i = 0; i < 160; ++i)
@@ -682,6 +687,7 @@ int main(int argc, char *argv[])
 			("message-bits", value<unsigned int>(&config_nr_message_bits), "Number of fixed message bits (0-512)")
 			("hash-bits", value<unsigned int>(&config_nr_hash_bits), "Number of fixed hash bits (0-160)")
 			("zero", bool_switch(&all_zero_output), "When doing preimage attack, hash output should be zero")
+			("randomout", value<int>(&random_output), "When doing preimage attack, hash output should be random")
 		;
 
 		options_description format_options("Format options");
