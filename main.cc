@@ -693,7 +693,7 @@ int main(int argc, char *argv[])
 		options_description format_options("Format options");
 		format_options.add_options()
 			("tseitin-adders", "Use Tseitin encoding of the circuit representation of adders")
-			("nocomment", "Don't add comments");
+			("nocomment", "Don't add comments")
 		;
 
 		options_description cnf_options("CNF-specific options");
