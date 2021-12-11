@@ -27,6 +27,7 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <algorithm>
 #include <stdexcept>
 #include <vector>
 #include <boost/program_options.hpp>
