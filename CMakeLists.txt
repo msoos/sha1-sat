@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.11 FATAL_ERROR)
 
 if(POLICY CMP0048)
     cmake_policy(SET CMP0048 NEW)
@@ -19,6 +19,10 @@ ENDIF()
 PROJECT(sha1-sat)
 
 option(STATICCOMPILE "Compile to static executable" OFF)
+if (STATICCOMPILE)
+    set(BUILD_SHARED_LIBS OFF)
+    set(Boost_USE_STATIC_LIBS ON)
+endif()
 
 find_package( Boost 1.46 REQUIRED COMPONENTS program_options)
 include_directories(${Boost_INCLUDE_DIRS})
