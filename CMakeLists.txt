@@ -21,11 +21,8 @@ PROJECT(sha1-sat)
 option(STATICCOMPILE "Compile to static executable" OFF)
 if (STATICCOMPILE)
     set(BUILD_SHARED_LIBS OFF)
-    set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-find_package( Boost 1.46 REQUIRED COMPONENTS program_options)
-include_directories(${Boost_INCLUDE_DIRS})
 
 add_executable(sha1-gen
     main.cc
@@ -36,7 +33,6 @@ set_target_properties(sha1-gen PROPERTIES
     INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 target_link_libraries(sha1-gen
-    ${Boost_LIBRARIES}
 )
 
 add_executable(sha1-verify

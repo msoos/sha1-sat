@@ -30,8 +30,8 @@
 #include <algorithm>
 #include <stdexcept>
 #include <vector>
-#include <boost/program_options.hpp>
 #include "format.hh"
+#include "argparse.hpp"
 
 #if defined (_MSC_VER)
 #define my_popcnt(x) __popcnt(x)
@@ -41,7 +41,6 @@
 
 
 /* Instance options */
-static std::string config_attack = "preimage";
 static unsigned int config_nr_rounds = 80;
 static unsigned int config_nr_message_bits = 0;
 static unsigned int config_nr_hash_bits = 160;
@@ -53,6 +52,11 @@ static bool config_use_xor_clauses = false;
 static bool config_use_tseitin_adders = true;
 static bool config_restrict_branching = false;
 static bool nocomment = false;
+using std::string;
+static string config_attack = "preimage";
+argparse::ArgumentParser program = argparse::ArgumentParser("sha1-sat");
+using std::cout;
+using std::endl;
 
 static std::ostringstream cnf;
 
@@ -671,91 +675,70 @@ int main(int argc, char *argv[])
 {
 	unsigned long seed = 0;
 
-	/* Process command line */
-	{
-		using namespace boost::program_options;
+    program.add_argument("--seed")
+        .action([&](const auto& a) {seed = std::atoi(a.c_str());})
+        .default_value(seed)
+        .help("Random number seed");
+    program.add_argument("--attack")
+        .action([&](const auto& a) {config_attack = a;})
+        .default_value("preimage")
+        .help("Attack type (preimage, second-preimage, collision)");
+    program.add_argument("--rounds")
+        .action([&](const auto& a) {config_nr_rounds = std::atoi(a.c_str());})
+        .default_value(config_nr_rounds)
+        .help("Number of rounds (16-80)");
+    program.add_argument("--message-bits")
+        .action([&](const auto& a) {config_nr_message_bits = std::atoi(a.c_str());})
+        .default_value(config_nr_message_bits)
+        .help("Number of fixed message bits (0-512)");
+    program.add_argument("--hash-bits")
+        .action([&](const auto& a) {config_nr_hash_bits = std::atoi(a.c_str());})
+        .default_value(config_nr_hash_bits)
+        .help("Number of fixed hash bits (0-160)");
+    program.add_argument("--zero")
+        .action([&](const auto& ) {all_zero_output = true;})
+        .flag()
+        .help("Number of fixed hash bits (0-160)");
+    program.add_argument("--nocomment")
+        .action([&](const auto& ) {nocomment = true;})
+        .flag()
+        .help("Don't write comments in the CNF file");
+    program.add_argument("--restrict-branching")
+        .action([&](const auto& ) {config_restrict_branching = true;})
+        .flag()
+        .help("Restrict branching variables to message bits");
+    program.add_argument("--xor")
+        .action([&](const auto& ) {config_use_xor_clauses = true;})
+        .flag()
+        .help("Use XOR clauses");
 
-		options_description options("Options");
-		options.add_options()
-			("help,h", "Display this information")
-		;
+    try {
+        program.parse_args(argc, argv);
+        if (program.is_used("--help")) {
+            cout << "sha1-sat --seed SEED [options]" << endl << endl;
+            cout << program << endl;
+            std::exit(0);
+        }
+    }
+    catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << program;
+        exit(-1);
+    }
 
-		options_description instance_options("Instance options");
-		instance_options.add_options()
-			("seed", value<unsigned long>(&seed), "Random number seed")
-			("attack", value<std::string>(), "Attack type (preimage, second-preimage, collision)")
-			("rounds", value<unsigned int>(&config_nr_rounds), "Number of rounds (16-80)")
-			("message-bits", value<unsigned int>(&config_nr_message_bits), "Number of fixed message bits (0-512)")
-			("hash-bits", value<unsigned int>(&config_nr_hash_bits), "Number of fixed hash bits (0-160)")
-			("zero", bool_switch(&all_zero_output), "When doing preimage attack, hash output should be zero")
-			("randomout", value<int>(&random_output), "When doing preimage attack, hash output should be random")
-		;
+    if (!program.is_used("seed")) {
+        std::cout << "You MUST give a seed." << std::endl;
+        return -1;
+    }
+    if (config_attack != "preimage" && config_attack != "second-preimage" && config_attack != "collision") {
+        std::cerr << "Invalid --attack\n";
+        return EXIT_FAILURE;
+    }
 
-		options_description format_options("Format options");
-		format_options.add_options()
-			("tseitin-adders", "Use Tseitin encoding of the circuit representation of adders")
-			("nocomment", "Don't add comments")
-		;
-
-		options_description cnf_options("CNF-specific options");
-		cnf_options.add_options()
-			("xor", "Use XOR clauses")
-			("restrict-branching", "Restrict branching variables to message bits")
-		;
-
-		options_description all_options;
-		all_options.add(options);
-		all_options.add(instance_options);
-		all_options.add(format_options);
-		all_options.add(cnf_options);
-
-		positional_options_description p;
-		p.add("input", -1);
-
-		variables_map map;
-		store(command_line_parser(argc, argv)
-			.options(all_options)
-			.positional(p)
-			.run(), map);
-		notify(map);
-
-		if (!map.count("seed")) {
-			std::cout << "You MUST give a seed." << std::endl;
-			return -1;
-		}
-
-		if (map.count("help")) {
-			std::cout << all_options;
-			return 0;
-		}
-
-		if (map.count("nocomment")) {
-			nocomment = true;
-		}
-
-		if (map.count("attack") == 1) {
-			config_attack = map["attack"].as<std::string>();
-		} else if (map.count("attack") > 1) {
-			std::cerr << "Can only specify --attack once\n";
-			return EXIT_FAILURE;
-		}
-
-		if (config_attack != "preimage" && config_attack != "second-preimage" && config_attack != "collision") {
-			std::cerr << "Invalid --attack\n";
-			return EXIT_FAILURE;
-		}
-
-		if (config_attack != "preimage" && all_zero_output) {
-			std::cerr << "You can only zero out the output for preimage attacks" << std::endl;
-			return EXIT_FAILURE;
-		}
-
-		if (map.count("xor"))
-			config_use_xor_clauses = true;
-
-		if (map.count("restrict-branching"))
-			config_restrict_branching = true;
-	}
+    if (config_attack != "preimage" && all_zero_output) {
+        std::cerr << "You can only zero out the output for preimage attacks" << std::endl;
+        return EXIT_FAILURE;
+    }
 
 	comment("");
 	comment("Instance generated by sha1-sat");
