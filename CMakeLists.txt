@@ -18,10 +18,7 @@ ENDIF()
 
 PROJECT(sha1-sat)
 
-option(STATICCOMPILE "Compile to static executable" OFF)
-if (STATICCOMPILE)
-    set(BUILD_SHARED_LIBS OFF)
-endif()
+option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
 
 add_executable(sha1-gen
